@@ -1,28 +1,44 @@
-const jwt = require("jsonwebtoken");
+const admin = require("../config/firebaseAdmin");
+const User = require("../models/User");
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "Not authorized, please login" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const token = authHeader.split(" ")[1];
+
+    // Firebase token verify
+    const decoded = await admin.auth().verifyIdToken(token);
+
+    let user = await User.findOne({ email: decoded.email });
+
+    if (!user) {
+      user = await User.create({
+        name: decoded.name || "User",
+        email: decoded.email,
+        firebaseUid: decoded.uid,
+        profilePhoto: decoded.picture || "",
+        password: "firebase-auth",
+      });
+    }
+
+    req.user = { id: user._id, role: user.role, email: user.email };
     next();
   } catch (error) {
     res.status(401).json({ message: "Invalid token, please login again" });
   }
 };
 
-// Role check middleware
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        message: "You are not allowed to access this route",
-      });
+      return res
+        .status(403)
+        .json({ message: "You are not allowed to access this route" });
     }
     next();
   };

@@ -10,7 +10,7 @@ const {
 } = require("../controllers/adminController");
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
 
-// সব route এ admin protection
+// route admin protection
 router.use(protect, authorizeRoles("admin"));
 
 router.get("/stats", getDashboardStats);

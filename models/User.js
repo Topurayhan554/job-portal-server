@@ -2,78 +2,49 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    password: {
-      type: String,
-      required: true,
-      minlength: 6,
-    },
+    firebaseUid: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    photoURL: { type: String, default: "" },
+    phone: { type: String, default: "" },
     role: {
       type: String,
       enum: ["seeker", "employer", "admin"],
       default: "seeker",
     },
-    profilePhoto: {
-      type: String,
-      default: "",
-    },
-    // Seeker-এর জন্য
-    skills: [String],
-    resume: {
-      type: String,
-      default: "",
-    },
-    experience: {
-      type: String,
-      default: "",
-    },
-    education: {
-      type: String,
-      default: "",
-    },
-    // Employer-এর জন্য
-    companyName: {
-      type: String,
-      default: "",
-    },
-    companyLogo: {
-      type: String,
-      default: "",
-    },
-    companyWebsite: {
-      type: String,
-      default: "",
-    },
-    companyDescription: {
-      type: String,
-      default: "",
-    },
-    // Account status
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    isBanned: {
-      type: Boolean,
-      default: false,
-    },
+    status: { type: String, enum: ["active", "banned"], default: "active" },
+    isBanned: { type: Boolean, default: false },
+
+    // Seeker specific
+    bio: { type: String, default: "" },
+    skills: [{ type: String }],
+    experience: [
+      {
+        role: String,
+        company: String,
+        duration: String,
+        desc: String,
+      },
+    ],
+    education: [
+      {
+        degree: String,
+        school: String,
+        duration: String,
+        grade: String,
+      },
+    ],
+    cvUrl: { type: String, default: "" },
+    savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Job" }],
+
+    // Employer specific
+    companyName: { type: String, default: "" },
+    companyWebsite: { type: String, default: "" },
+    companySize: { type: String, default: "" },
+    companyBio: { type: String, default: "" },
+    benefits: [{ type: String }],
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
-const User = mongoose.model("User", userSchema);
-
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);

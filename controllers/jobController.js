@@ -1,6 +1,5 @@
 const Job = require("../models/Job");
 
-// ✅ Create Job (Employer)
 const createJob = async (req, res) => {
   try {
     const {
@@ -34,7 +33,6 @@ const createJob = async (req, res) => {
   }
 };
 
-// ✅ Get All Approved Jobs (Public)
 const getAllJobs = async (req, res) => {
   try {
     const { search, location, jobType, skills } = req.query;
@@ -64,7 +62,6 @@ const getAllJobs = async (req, res) => {
   }
 };
 
-// ✅ Get Single Job
 const getJobById = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id).populate(
@@ -82,7 +79,6 @@ const getJobById = async (req, res) => {
   }
 };
 
-// ✅ Update Job (Employer)
 const updateJob = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
@@ -91,7 +87,6 @@ const updateJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    // শুধু নিজের job update করতে পারবে
     if (job.employer.toString() !== req.user.id) {
       return res.status(403).json({ message: "Not allowed" });
     }
@@ -108,7 +103,7 @@ const updateJob = async (req, res) => {
   }
 };
 
-// ✅ Delete Job (Employer)
+// Delete Job (Employer)
 const deleteJob = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
@@ -129,7 +124,7 @@ const deleteJob = async (req, res) => {
   }
 };
 
-// ✅ Get Employer's Own Jobs
+// Get Employer's Own Jobs
 const getMyJobs = async (req, res) => {
   try {
     const jobs = await Job.find({ employer: req.user.id }).sort({

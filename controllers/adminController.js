@@ -2,7 +2,7 @@ const User = require("../models/User");
 const Job = require("../models/Job");
 const Application = require("../models/Application");
 
-// ✅ Dashboard Statistics
+// Dashboard Statistics
 const getDashboardStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments({ role: { $ne: "admin" } });
@@ -25,7 +25,7 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
-// ✅ Get All Users
+// Get All Users
 const getAllUsers = async (req, res) => {
   try {
     const users = await User.find({ role: { $ne: "admin" } })
@@ -38,7 +38,7 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// ✅ Ban / Unban User
+// Ban / Unban User
 const toggleBanUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -61,7 +61,7 @@ const toggleBanUser = async (req, res) => {
   }
 };
 
-// ✅ Get All Jobs
+// Get All Jobs
 const getAllJobs = async (req, res) => {
   try {
     const jobs = await Job.find()
@@ -74,7 +74,7 @@ const getAllJobs = async (req, res) => {
   }
 };
 
-// ✅ Approve / Reject Job
+// Approve / Reject Job
 const updateJobStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -99,7 +99,7 @@ const updateJobStatus = async (req, res) => {
   }
 };
 
-// ✅ Delete Job
+// Delete Job
 const deleteJob = async (req, res) => {
   try {
     const job = await Job.findByIdAndDelete(req.params.id);

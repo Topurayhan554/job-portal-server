@@ -2,61 +2,39 @@ const mongoose = require("mongoose");
 
 const jobSchema = new mongoose.Schema(
   {
-    title: {
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    requirements: { type: String, default: "" },
+    benefits: { type: String, default: "" },
+    company: { type: String, required: true },
+    companyLogo: { type: String, default: "" },
+    location: { type: String, required: true },
+    type: {
       type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
+      enum: ["Full-time", "Part-time", "Remote", "Freelance", "Internship"],
       required: true,
     },
-    requirements: {
-      type: String,
-      required: true,
-    },
-    jobType: {
-      type: String,
-      enum: ["full-time", "part-time", "remote", "internship", "freelance"],
-      required: true,
-    },
-    location: {
-      type: String,
-      required: true,
-    },
-    salaryMin: {
-      type: Number,
-      default: 0,
-    },
-    salaryMax: {
-      type: Number,
-      default: 0,
-    },
-    skills: [String],
-    deadline: {
-      type: Date,
-      required: true,
-    },
+    category: { type: String, required: true },
+    experience: { type: String, required: true },
+    salaryMin: { type: Number, default: 0 },
+    salaryMax: { type: Number, default: 0 },
+    skills: [{ type: String }],
+    deadline: { type: Date },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
-      default: "pending",
+      enum: ["Active", "Paused", "Closed", "Pending"],
+      default: "Active",
     },
-    employer: {
+    featured: { type: Boolean, default: false },
+    reported: { type: Boolean, default: false },
+    postedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    applicantsCount: {
-      type: Number,
-      default: 0,
-    },
+    applicantsCount: { type: Number, default: 0 },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
-const Job = mongoose.model("Job", jobSchema);
-
-module.exports = Job;
+module.exports = mongoose.model("Job", jobSchema);
