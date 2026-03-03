@@ -7,7 +7,6 @@ const jobSchema = new mongoose.Schema(
     requirements: { type: String, default: "" },
     benefits: { type: String, default: "" },
     company: { type: String, required: true },
-    companyLogo: { type: String, default: "" },
     location: { type: String, required: true },
     type: {
       type: String,
@@ -15,7 +14,7 @@ const jobSchema = new mongoose.Schema(
       required: true,
     },
     category: { type: String, required: true },
-    experience: { type: String, required: true },
+    experience: { type: String, default: "" },
     salaryMin: { type: Number, default: 0 },
     salaryMax: { type: Number, default: 0 },
     skills: [{ type: String }],
@@ -27,12 +26,13 @@ const jobSchema = new mongoose.Schema(
     },
     featured: { type: Boolean, default: false },
     reported: { type: Boolean, default: false },
+    // applicantsCount track
+    applicantsCount: { type: Number, default: 0 },
     postedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    applicantsCount: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

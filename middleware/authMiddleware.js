@@ -21,6 +21,7 @@ const protect = async (req, res, next) => {
         name: decoded.name || "User",
         email: decoded.email,
         firebaseUid: decoded.uid,
+        photoURL: decoded.picture || "",
         profilePhoto: decoded.picture || "",
         password: "firebase-auth",
       });

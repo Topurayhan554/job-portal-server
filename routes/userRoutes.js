@@ -17,10 +17,10 @@ router.post("/", async (req, res) => {
       firebaseUid: uid,
       name,
       email,
+      photoURL: photoURL || "",
       profilePhoto: photoURL || "",
       phone: phone || "",
       role: role || "seeker",
-      password: "firebase-auth",
     });
 
     res.status(201).json({ success: true, user });
@@ -40,12 +40,16 @@ router.post("/login", async (req, res) => {
         firebaseUid: uid,
         name: name || "User",
         email,
+        photoURL: photoURL || "",
         profilePhoto: photoURL || "",
-        password: "firebase-auth",
       });
     } else {
+      // only update if not already customized
       if (name) user.name = name;
-      if (photoURL) user.profilePhoto = photoURL;
+      if (photoURL && !user.profilePhoto) {
+        user.photoURL = photoURL;
+        user.profilePhoto = photoURL;
+      }
       await user.save();
     }
 
@@ -59,6 +63,10 @@ router.post("/login", async (req, res) => {
 router.get("/me", protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -69,19 +77,27 @@ router.get("/me", protect, async (req, res) => {
 router.put("/me", protect, async (req, res) => {
   try {
     const allowedFields = [
+      // Basic
       "name",
       "phone",
       "bio",
+      "location",
+      // Photos
+      "photoURL",
+      "profilePhoto",
+      "coverPhoto",
+      // Seeker
       "skills",
       "experience",
       "education",
       "cvUrl",
+      "savedJobs",
+      // Employer
       "companyName",
       "companyWebsite",
       "companySize",
       "companyBio",
       "benefits",
-      "profilePhoto",
     ];
 
     const updates = {};
@@ -91,7 +107,13 @@ router.put("/me", protect, async (req, res) => {
 
     const user = await User.findByIdAndUpdate(req.user.id, updates, {
       new: true,
+      runValidators: true,
     }).select("-password");
+
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
     res.json({ success: true, user });
   } catch (error) {
@@ -158,6 +180,12 @@ router.put("/:id/role", protect, authorizeRoles("admin"), async (req, res) => {
       { role: req.body.role },
       { new: true },
     ).select("-password");
+
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -167,7 +195,12 @@ router.put("/:id/role", protect, authorizeRoles("admin"), async (req, res) => {
 // DELETE /api/users/:id — Admin only
 router.delete("/:id", protect, authorizeRoles("admin"), async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.params.id);
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+
     res.json({ success: true, message: "User deleted" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

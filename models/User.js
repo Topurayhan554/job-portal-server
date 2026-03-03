@@ -5,8 +5,17 @@ const userSchema = new mongoose.Schema(
     firebaseUid: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+
+    // ✅ photo fields — photoURL এর পাশে profilePhoto ও coverPhoto add
     photoURL: { type: String, default: "" },
+    profilePhoto: { type: String, default: "" },
+    coverPhoto: { type: String, default: "" },
+
     phone: { type: String, default: "" },
+
+    // ✅ location add
+    location: { type: String, default: "" },
+
     role: {
       type: String,
       enum: ["seeker", "employer", "admin"],

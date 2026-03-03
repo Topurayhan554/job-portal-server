@@ -3,6 +3,8 @@ const router = express.Router();
 const Job = require("../models/Job");
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
 
+// ✅ IMPORTANT: সব specific routes আগে, /:id সবার শেষে
+
 // GET /api/jobs — Public
 router.get("/", async (req, res) => {
   try {
@@ -55,7 +57,34 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/jobs/employer/my-jobs — must be before /:id
+// ✅ 1. Admin all jobs — MUST be before /:id
+router.get("/admin/all", protect, authorizeRoles("admin"), async (req, res) => {
+  try {
+    const { search, status, page = 1, limit = 12 } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { company: { $regex: search, $options: "i" } },
+      ];
+    }
+    if (status && status !== "All") query.status = status;
+
+    const total = await Job.countDocuments(query);
+    const jobs = await Job.find(query)
+      .populate("postedBy", "name email profilePhoto")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    res.json({ success: true, jobs, total, pages: Math.ceil(total / limit) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ✅ 2. Employer my-jobs — MUST be before /:id
 router.get(
   "/employer/my-jobs",
   protect,
@@ -79,7 +108,22 @@ router.get(
   },
 );
 
-// GET /api/jobs/:id — Single job
+// ✅ 3. POST — create job
+router.post(
+  "/",
+  protect,
+  authorizeRoles("employer", "admin"),
+  async (req, res) => {
+    try {
+      const job = await Job.create({ ...req.body, postedBy: req.user.id });
+      res.status(201).json({ success: true, job });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+);
+
+// ✅ 4. /:id routes — সবার শেষে
 router.get("/:id", async (req, res) => {
   try {
     const job = await Job.findById(req.params.id).populate(
@@ -94,25 +138,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/jobs — Employer only
-router.post(
-  "/",
-  protect,
-  authorizeRoles("employer", "admin"),
-  async (req, res) => {
-    try {
-      const job = await Job.create({
-        ...req.body,
-        postedBy: req.user.id,
-      });
-      res.status(201).json({ success: true, job });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  },
-);
-
-// PUT /api/jobs/:id
 router.put(
   "/:id",
   protect,
@@ -144,7 +169,6 @@ router.put(
   },
 );
 
-// DELETE /api/jobs/:id
 router.delete(
   "/:id",
   protect,
@@ -174,7 +198,6 @@ router.delete(
   },
 );
 
-// PUT /api/jobs/:id/report
 router.put("/:id/report", protect, async (req, res) => {
   try {
     await Job.findByIdAndUpdate(req.params.id, { reported: true });
