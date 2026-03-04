@@ -2,8 +2,11 @@ const express = require("express");
 const router = express.Router();
 const Job = require("../models/Job");
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
-
-// ✅ IMPORTANT: সব specific routes আগে, /:id সবার শেষে
+const {
+  notify,
+  notifyAllAdmins,
+  notifyAllSeekers,
+} = require("../utils/createNotification");
 
 // GET /api/jobs — Public
 router.get("/", async (req, res) => {
@@ -57,7 +60,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ 1. Admin all jobs — MUST be before /:id
+// GET /api/jobs/admin/all — Admin only (BEFORE /:id)
 router.get("/admin/all", protect, authorizeRoles("admin"), async (req, res) => {
   try {
     const { search, status, page = 1, limit = 12 } = req.query;
@@ -84,7 +87,7 @@ router.get("/admin/all", protect, authorizeRoles("admin"), async (req, res) => {
   }
 });
 
-// ✅ 2. Employer my-jobs — MUST be before /:id
+// GET /api/jobs/employer/my-jobs — Employer only (BEFORE /:id)
 router.get(
   "/employer/my-jobs",
   protect,
@@ -108,7 +111,7 @@ router.get(
   },
 );
 
-// ✅ 3. POST — create job
+// POST /api/jobs — Employer posts job
 router.post(
   "/",
   protect,
@@ -116,6 +119,27 @@ router.post(
   async (req, res) => {
     try {
       const job = await Job.create({ ...req.body, postedBy: req.user.id });
+
+      // ✅ Admin কে notify
+      await notifyAllAdmins({
+        type: "new_job",
+        title: "New Job Posted",
+        message: `"${job.title}" at ${job.company} posted. Needs review.`,
+        link: "/admin/jobs",
+        refJob: job._id,
+      });
+
+      // ✅ Active job হলে সব seeker কে notify
+      if (job.status === "Active") {
+        await notifyAllSeekers({
+          type: "new_job",
+          title: "New Job Available 🚀",
+          message: `${job.title} at ${job.company} — ${job.location} (${job.type})`,
+          link: `/jobs/${job._id}`,
+          refJob: job._id,
+        });
+      }
+
       res.status(201).json({ success: true, job });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -123,7 +147,7 @@ router.post(
   },
 );
 
-// ✅ 4. /:id routes — সবার শেষে
+// GET /api/jobs/:id — Public (AFTER specific routes)
 router.get("/:id", async (req, res) => {
   try {
     const job = await Job.findById(req.params.id).populate(
@@ -138,6 +162,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// PUT /api/jobs/:id
 router.put(
   "/:id",
   protect,
@@ -159,9 +184,37 @@ router.put(
           .json({ success: false, message: "Not authorized" });
       }
 
+      const wasNotActive = job.status !== "Active";
       const updated = await Job.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
       });
+
+      // ✅ Admin job approve করলে
+      if (
+        req.user.role === "admin" &&
+        wasNotActive &&
+        updated.status === "Active"
+      ) {
+        // Employer কে notify
+        await notify({
+          recipient: job.postedBy,
+          type: "job_approved",
+          title: "Job Approved! 🎉",
+          message: `Your job "${job.title}" is now live and visible to seekers.`,
+          link: "/employer/jobs",
+          refJob: job._id,
+        });
+
+        // Seekers কে notify
+        await notifyAllSeekers({
+          type: "new_job",
+          title: "New Job Available 🚀",
+          message: `${job.title} at ${job.company} — ${job.location} (${job.type})`,
+          link: `/jobs/${job._id}`,
+          refJob: job._id,
+        });
+      }
+
       res.json({ success: true, job: updated });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -169,6 +222,7 @@ router.put(
   },
 );
 
+// DELETE /api/jobs/:id
 router.delete(
   "/:id",
   protect,
@@ -198,9 +252,23 @@ router.delete(
   },
 );
 
+// PUT /api/jobs/:id/report
 router.put("/:id/report", protect, async (req, res) => {
   try {
     await Job.findByIdAndUpdate(req.params.id, { reported: true });
+
+    // ✅ Admin কে notify
+    const job = await Job.findById(req.params.id);
+    if (job) {
+      await notifyAllAdmins({
+        type: "new_job",
+        title: "Job Reported ⚠️",
+        message: `"${job.title}" at ${job.company} has been reported by a user.`,
+        link: "/admin/jobs",
+        refJob: job._id,
+      });
+    }
+
     res.json({ success: true, message: "Job reported" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

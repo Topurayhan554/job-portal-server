@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
+const { notify, notifyAllAdmins } = require("../utils/createNotification");
 
 // POST /api/users — Register/Sync user
 router.post("/", async (req, res) => {
@@ -9,9 +10,7 @@ router.post("/", async (req, res) => {
     const { name, email, photoURL, uid, phone, role } = req.body;
 
     let user = await User.findOne({ email });
-    if (user) {
-      return res.json({ success: true, user });
-    }
+    if (user) return res.json({ success: true, user });
 
     user = await User.create({
       firebaseUid: uid,
@@ -21,6 +20,14 @@ router.post("/", async (req, res) => {
       profilePhoto: photoURL || "",
       phone: phone || "",
       role: role || "seeker",
+    });
+
+    await notifyAllAdmins({
+      type: "new_user",
+      title: "New User Registered",
+      message: `${name} joined as a ${role || "seeker"}.`,
+      link: "/admin/users",
+      refUser: user._id,
     });
 
     res.status(201).json({ success: true, user });
@@ -43,14 +50,6 @@ router.post("/login", async (req, res) => {
         photoURL: photoURL || "",
         profilePhoto: photoURL || "",
       });
-    } else {
-      // only update if not already customized
-      if (name) user.name = name;
-      if (photoURL && !user.profilePhoto) {
-        user.photoURL = photoURL;
-        user.profilePhoto = photoURL;
-      }
-      await user.save();
     }
 
     res.json({ success: true, user });
@@ -77,22 +76,18 @@ router.get("/me", protect, async (req, res) => {
 router.put("/me", protect, async (req, res) => {
   try {
     const allowedFields = [
-      // Basic
       "name",
       "phone",
       "bio",
       "location",
-      // Photos
       "photoURL",
       "profilePhoto",
       "coverPhoto",
-      // Seeker
       "skills",
       "experience",
       "education",
       "cvUrl",
       "savedJobs",
-      // Employer
       "companyName",
       "companyWebsite",
       "companySize",
@@ -105,15 +100,55 @@ router.put("/me", protect, async (req, res) => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
 
-    const user = await User.findByIdAndUpdate(req.user.id, updates, {
-      new: true,
-      runValidators: true,
-    }).select("-password");
+    if (Object.keys(updates).length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No valid fields to update" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: updates },
+      { new: true, runValidators: false },
+    ).select("-password");
 
     if (!user)
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
+
+    // Profile update notification
+    const skipFields = ["savedJobs", "photoURL", "coverPhoto"];
+    const fieldLabels = {
+      name: "Name",
+      phone: "Phone number",
+      bio: "Bio",
+      location: "Location",
+      profilePhoto: "Profile photo",
+      skills: "Skills",
+      experience: "Work experience",
+      education: "Education",
+      cvUrl: "CV / Resume",
+      companyName: "Company name",
+      companyWebsite: "Company website",
+      companySize: "Company size",
+      companyBio: "Company bio",
+      benefits: "Company benefits",
+    };
+
+    const changed = Object.keys(updates)
+      .filter((f) => !skipFields.includes(f) && fieldLabels[f])
+      .map((f) => fieldLabels[f]);
+
+    if (changed.length > 0) {
+      await notify({
+        recipient: req.user.id,
+        type: "profile_update",
+        title: "Profile Updated ✅",
+        message: `${changed.join(", ")} updated successfully.`,
+        link: `/${user.role}/profile`,
+      });
+    }
 
     res.json({ success: true, user });
   } catch (error) {
@@ -162,6 +197,16 @@ router.put("/:id/ban", protect, authorizeRoles("admin"), async (req, res) => {
     user.status = user.isBanned ? "banned" : "active";
     await user.save();
 
+    await notify({
+      recipient: user._id,
+      type: "profile_update",
+      title: user.isBanned ? "Account Suspended" : "Account Restored",
+      message: user.isBanned
+        ? "Your account has been suspended by an admin."
+        : "Your account has been restored. Welcome back!",
+      link: "/",
+    });
+
     res.json({
       success: true,
       user,
@@ -186,6 +231,14 @@ router.put("/:id/role", protect, authorizeRoles("admin"), async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
 
+    await notify({
+      recipient: user._id,
+      type: "profile_update",
+      title: "Role Updated",
+      message: `Your account role has been changed to ${req.body.role}.`,
+      link: `/${req.body.role}/dashboard`,
+    });
+
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -200,7 +253,6 @@ router.delete("/:id", protect, authorizeRoles("admin"), async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
-
     res.json({ success: true, message: "User deleted" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

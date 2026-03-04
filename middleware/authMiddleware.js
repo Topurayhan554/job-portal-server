@@ -10,8 +10,6 @@ const protect = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-
-    // Firebase token verify
     const decoded = await admin.auth().verifyIdToken(token);
 
     let user = await User.findOne({ email: decoded.email });
@@ -23,7 +21,6 @@ const protect = async (req, res, next) => {
         firebaseUid: decoded.uid,
         photoURL: decoded.picture || "",
         profilePhoto: decoded.picture || "",
-        password: "firebase-auth",
       });
     }
 
