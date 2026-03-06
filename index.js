@@ -11,6 +11,7 @@ const jobRoutes = require("./routes/jobRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const messageRoutes = require("./routes/MessageRoutes");
 
 connectDB();
 
@@ -36,7 +37,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/notifications", notificationRoutes); // ✅
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/messages", messageRoutes);
 
 // 404
 app.use((req, res) => {
