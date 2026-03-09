@@ -18,23 +18,34 @@ connectDB();
 
 const app = express();
 
-// 1. CORS
+// ── CORS — localhost + Vercel
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://job-portal-client-sigma-azure.vercel.app",
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS: " + origin));
+      }
+    },
     credentials: true,
   }),
 );
 
-//2. Body parsers
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
 app.use(cookieParser());
 
 // Routes
 app.get("/", (req, res) =>
-  res.json({ message: "Job Portal API is running..." }),
+  res.json({ message: "KaajKhojo API is running..." }),
 );
 
 app.use("/api/auth", authRoutes);
