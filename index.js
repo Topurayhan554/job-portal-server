@@ -18,7 +18,7 @@ connectDB();
 
 const app = express();
 
-// ✅ 1. CORS — সবার আগে
+// 1. CORS
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
@@ -26,7 +26,7 @@ app.use(
   }),
 );
 
-// ✅ 2. Body parsers — limit 10mb (base64 CV এর জন্য)
+//2. Body parsers
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -61,3 +61,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+module.exports = app;
