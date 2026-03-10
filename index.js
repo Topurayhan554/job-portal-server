@@ -22,7 +22,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://job-portal-client-sigma-azure.vercel.app",
+  "https://kaajkhojo-sigma-azure.vercel.app",
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
